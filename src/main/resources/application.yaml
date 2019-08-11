@@ -1,0 +1,27 @@
+server:
+  port: 8080
+  servlet:
+    contextPath: /
+
+spring:
+  datasource:
+    tomcat:
+      max-wait: 5000
+      max-active: 10
+      test-on-borrow: true
+    username: root
+    password: toor
+    url: jdbc:h2:file:./db/ecb-rates_db
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  liquibase:
+    change-log: classpath:/migration/changelog-master.xml
+
+
+ecb:
+  url: https://www.ecb.europa.eu
+  namespaces:
+    gesmes: http://www.gesmes.org/xml/2002-08-01
+    eurofxref: http://www.ecb.int/vocabulary/2002-08-01/eurofxref
