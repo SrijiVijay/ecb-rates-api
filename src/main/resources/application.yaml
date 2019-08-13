@@ -11,7 +11,7 @@ spring:
       test-on-borrow: true
     username: root
     password: toor
-    url: jdbc:h2:file:./db/ecb-rates_db
+    url: jdbc:h2:file:./db/ecb_rates_db
     driver-class-name: org.h2.Driver
   jpa:
     hibernate:

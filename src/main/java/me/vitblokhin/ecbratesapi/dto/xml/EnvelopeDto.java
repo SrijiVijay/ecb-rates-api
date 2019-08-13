@@ -6,7 +6,7 @@ import lombok.Data;
 
 
 @Data
-@JacksonXmlRootElement(localName = "Envelope", namespace = "gesmes")
+@JacksonXmlRootElement(localName = "Envelope")
 public class EnvelopeDto {
     private String subject;
     @JacksonXmlProperty(localName = "Sender")

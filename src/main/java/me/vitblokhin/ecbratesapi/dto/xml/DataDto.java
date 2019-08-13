@@ -10,7 +10,6 @@ import java.util.List;
 
 @Data
 public class DataDto {
-
     @JsonFormat(pattern = "yyyy-MM-dd")
     @JacksonXmlProperty(isAttribute = true)
     private LocalDate time;

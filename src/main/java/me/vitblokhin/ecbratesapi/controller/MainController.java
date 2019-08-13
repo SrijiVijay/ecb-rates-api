@@ -1,6 +1,8 @@
 package me.vitblokhin.ecbratesapi.controller;
 
 import me.vitblokhin.ecbratesapi.client.RateClient;
+import me.vitblokhin.ecbratesapi.dto.json.DailyRateDto;
+import me.vitblokhin.ecbratesapi.dto.json.TimeSeriesRateDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,8 +17,13 @@ public class MainController {
         this.rateClient = rateClient;
     }
 
-    @GetMapping("/")
-    public ResponseEntity<String> getEnvelope(){
-        return ResponseEntity.ok(rateClient.fetchDailyRates().toString());
+    @GetMapping(value = "/", produces = "application/json")
+    public ResponseEntity<DailyRateDto> getDaily(){
+        return ResponseEntity.ok(rateClient.fetchDailyRates());
+    }
+
+    @GetMapping(value = "/historical", produces = "application/json")
+    public ResponseEntity<TimeSeriesRateDto> getHistorical(){
+        return ResponseEntity.ok(rateClient.fetchHistoricalRates());
     }
 } // class MainController
