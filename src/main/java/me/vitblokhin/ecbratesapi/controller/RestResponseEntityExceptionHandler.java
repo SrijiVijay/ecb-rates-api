@@ -1,6 +1,7 @@
 package me.vitblokhin.ecbratesapi.controller;
 
 import me.vitblokhin.ecbratesapi.dto.json.ExceptionDto;
+import me.vitblokhin.ecbratesapi.exception.InvalidParameterException;
 import me.vitblokhin.ecbratesapi.exception.ItemNotFoundException;
 import me.vitblokhin.ecbratesapi.exception.ServerException;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,14 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
                 .status(HttpStatus.NOT_FOUND)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(new ExceptionDto(ex.getMessage()));
+    }
 
+    @ExceptionHandler({InvalidParameterException.class})
+    public ResponseEntity<Object> invalidParameterHandler(InvalidParameterException ex, final WebRequest request) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(new ExceptionDto(ex.getMessage()));
     }
 
     @ExceptionHandler({Exception.class, ServerException.class})

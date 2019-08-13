@@ -22,6 +22,6 @@ spring:
 
 ecb:
   url: https://www.ecb.europa.eu
-  namespaces:
-    gesmes: http://www.gesmes.org/xml/2002-08-01
-    eurofxref: http://www.ecb.int/vocabulary/2002-08-01/eurofxref
+
+cron:
+  fetchtime: 0 0 17 * * ?
