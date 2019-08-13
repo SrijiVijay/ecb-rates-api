@@ -1,4 +1,4 @@
-package me.vitblokhin.ecbratesapi.dto.xml;
+package me.vitblokhin.ecbratesapi.client.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
@@ -9,14 +9,14 @@ import java.time.LocalDate;
 import java.util.List;
 
 @Data
-public class DataDto {
+public class DailyData {
     @JsonFormat(pattern = "yyyy-MM-dd")
     @JacksonXmlProperty(isAttribute = true)
     private LocalDate time;
     @JacksonXmlProperty(localName = "Cube")
     @JacksonXmlElementWrapper(useWrapping = false)
-    private List<RateDto> rates;
+    private List<RateData> rates;
 
-    public DataDto() {
+    public DailyData() {
     }
-} // class Data
+} // class DailyData

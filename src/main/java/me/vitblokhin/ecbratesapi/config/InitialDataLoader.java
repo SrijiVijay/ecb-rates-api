@@ -2,9 +2,9 @@ package me.vitblokhin.ecbratesapi.config;
 
 import lombok.extern.log4j.Log4j2;
 import me.vitblokhin.ecbratesapi.client.RateClient;
-import me.vitblokhin.ecbratesapi.dto.xml.DataDto;
-import me.vitblokhin.ecbratesapi.dto.xml.EnvelopeDto;
-import me.vitblokhin.ecbratesapi.dto.xml.RateDto;
+import me.vitblokhin.ecbratesapi.client.response.DailyData;
+import me.vitblokhin.ecbratesapi.client.response.Envelope;
+import me.vitblokhin.ecbratesapi.client.response.RateData;
 import me.vitblokhin.ecbratesapi.model.Currency;
 import me.vitblokhin.ecbratesapi.model.ExchangeDate;
 import me.vitblokhin.ecbratesapi.model.Rate;
@@ -60,27 +60,26 @@ public class InitialDataLoader implements ApplicationListener<ContextRefreshedEv
         }
 
         if (exchangeDateRepository.count() == 0) {
+            Envelope envelope = rateClient.fetchAll();
 
-            EnvelopeDto envelope = rateClient.fetchAll();
-
-            for (DataDto dataDto : envelope.getCube().getData()) {
-                this.saveDailyRates(dataDto);
+            for (DailyData dailyData : envelope.getCube().getData()) {
+                this.saveDailyRates(dailyData);
             }
         }
         this.isSet = true;
     }
 
     @Transactional
-    void saveDailyRates(DataDto dataDto) {
+    void saveDailyRates(DailyData dailyData) {
         List<Rate> initRates = new ArrayList<>();
-        LocalDate date = dataDto.getTime();
+        LocalDate date = dailyData.getTime();
         ExchangeDate exDate = this.prepareExchangeDate(date);
-        for (RateDto rateDto : dataDto.getRates()) {
-            String code = rateDto.getCurrency();
+        for (RateData rateData : dailyData.getRates()) {
+            String code = rateData.getCurrency();
             Rate rate = new Rate();
             Currency currency = this.prepareCurrency(code);
 
-            rate.setRate(rateDto.getRate());
+            rate.setRate(rateData.getRate());
             rate.setCurrency(currency);
             rate.setDate(exDate);
             exDate.getRates().add(rate);

@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface ExchangeDateRepository extends JpaRepository<ExchangeDate, Long> {
     Optional<ExchangeDate> findByDate(LocalDate date);
+    Optional<ExchangeDate> findFirstByDateBeforeOrderByDateDesc(LocalDate date);
 } // interface ExchangeDateRepository

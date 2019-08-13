@@ -1,4 +1,4 @@
-package me.vitblokhin.ecbratesapi.dto.xml;
+package me.vitblokhin.ecbratesapi.client.response;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
@@ -7,11 +7,11 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class CubeDto {
+public class Cube {
     @JacksonXmlProperty(localName = "Cube")
     @JacksonXmlElementWrapper(useWrapping = false)
-    private List<DataDto> data;
+    private List<DailyData> data;
 
-    public CubeDto() {
+    public Cube() {
     }
-} // class CubeDto
+} // class Cube

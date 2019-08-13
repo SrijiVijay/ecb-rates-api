@@ -4,8 +4,8 @@ import lombok.extern.log4j.Log4j2;
 import me.vitblokhin.ecbratesapi.client.RateClient;
 import me.vitblokhin.ecbratesapi.dto.json.DailyRateDto;
 import me.vitblokhin.ecbratesapi.dto.json.TimeSeriesRateDto;
-import me.vitblokhin.ecbratesapi.dto.xml.DataDto;
-import me.vitblokhin.ecbratesapi.dto.xml.EnvelopeDto;
+import me.vitblokhin.ecbratesapi.client.response.DailyData;
+import me.vitblokhin.ecbratesapi.client.response.Envelope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
@@ -35,7 +35,7 @@ public class RateClientImpl implements RateClient {
     @Override
     public DailyRateDto fetchDailyRates() {
 
-        EnvelopeDto data = this.fetchData(URL_DAILY);
+        Envelope data = this.fetchData(URL_DAILY);
 
         DailyRateDto dailyRate = new DailyRateDto();
         dailyRate.setBase("EUR");
@@ -55,7 +55,7 @@ public class RateClientImpl implements RateClient {
 
     @Override
     public TimeSeriesRateDto fetchHistoricalRates() {
-        EnvelopeDto data = this.fetchData(URL_HISTORIC);
+        Envelope data = this.fetchData(URL_HISTORIC);
 
         TimeSeriesRateDto timeSeriesRate = new TimeSeriesRateDto();
         timeSeriesRate.setBase("EUR");
@@ -65,11 +65,11 @@ public class RateClientImpl implements RateClient {
             return null;
         }
 
-        for (DataDto dataDto : data.getCube().getData()) {
+        for (DailyData dailyData : data.getCube().getData()) {
             Map<String, BigDecimal> dateMap = new HashMap<>();
-            dataDto.getRates()
+            dailyData.getRates()
                     .forEach(r -> dateMap.put(r.getCurrency(), r.getRate()));
-            rates.put(dataDto.getTime(), dateMap);
+            rates.put(dailyData.getTime(), dateMap);
         }
 
         timeSeriesRate.setRates(rates);
@@ -83,13 +83,18 @@ public class RateClientImpl implements RateClient {
     }
 
     @Override
-    public EnvelopeDto fetchAll() {
+    public Envelope fetchAll() {
         return this.fetchData(URL_HISTORIC);
     }
 
-    private EnvelopeDto fetchData(String url) {
-        url = (url == null) ? URL_BASE : URL_BASE + url;
-        return restTemplate.getForEntity(url, EnvelopeDto.class).getBody();
+    @Override
+    public Envelope fetchLatest() {
+        return this.fetchData(URL_DAILY);
+    }
+
+    private Envelope fetchData(String url) {
+        url = (url == null) ? URL_DAILY : url;
+        return restTemplate.getForEntity(URL_BASE + url, Envelope.class).getBody();
     }
 
 } // class RateClientImpl

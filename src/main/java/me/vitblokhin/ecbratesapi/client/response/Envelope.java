@@ -1,4 +1,4 @@
-package me.vitblokhin.ecbratesapi.dto.xml;
+package me.vitblokhin.ecbratesapi.client.response;
 
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
@@ -7,13 +7,13 @@ import lombok.Data;
 
 @Data
 @JacksonXmlRootElement(localName = "Envelope")
-public class EnvelopeDto {
+public class Envelope {
     private String subject;
     @JacksonXmlProperty(localName = "Sender")
-    private SenderDto sender;
+    private Sender sender;
     @JacksonXmlProperty(localName = "Cube")
-    private CubeDto cube;
+    private Cube cube;
 
-    public EnvelopeDto() {
+    public Envelope() {
     }
-} // class EnvelopeDto
+} // class Envelope

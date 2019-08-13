@@ -2,7 +2,7 @@ package me.vitblokhin.ecbratesapi.client;
 
 import me.vitblokhin.ecbratesapi.dto.json.DailyRateDto;
 import me.vitblokhin.ecbratesapi.dto.json.TimeSeriesRateDto;
-import me.vitblokhin.ecbratesapi.dto.xml.EnvelopeDto;
+import me.vitblokhin.ecbratesapi.client.response.Envelope;
 
 public interface RateClient {
 
@@ -12,5 +12,6 @@ public interface RateClient {
 
     TimeSeriesRateDto fetchLast90DaysRates();
 
-    EnvelopeDto fetchAll();
+    Envelope fetchAll();
+    Envelope fetchLatest();
 } // interface RateClient
