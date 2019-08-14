@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
@@ -16,21 +17,17 @@ import java.time.format.DateTimeParseException;
 
 @Log4j2
 @RestController
-public class MainController {
+@RequestMapping("/api")
+public class RatesController {
     private final RateService rateService;
 
     @Autowired
-    public MainController(RateService rateService) {
+    public RatesController(RateService rateService) {
         this.rateService = rateService;
     }
 
-    @GetMapping(value = "/", produces = "application/json")
+    @GetMapping(value = {"", "/latest"}, produces = "application/json")
     public ResponseEntity<DailyRateDto> getDaily(QueryFilter filter) {
-        return ResponseEntity.ok(rateService.getDailyRate(filter, LocalDate.now()));
-    }
-
-    @GetMapping(value = "/latest", produces = "application/json")
-    public ResponseEntity<DailyRateDto> getLatest(QueryFilter filter) {
         return ResponseEntity.ok(rateService.getDailyRate(filter, LocalDate.now()));
     }
 
@@ -41,7 +38,7 @@ public class MainController {
 
             return ResponseEntity.ok(rateService.getDailyRate(filter, date));
         } catch (DateTimeParseException ex) {
-            throw new InvalidParameterException("Time string \'" + dateStr + "\' does not match format \'yyyy-MM-dd\'");
+            throw new InvalidParameterException("String \'" + dateStr + "\' does not match format \'yyyy-MM-dd\' or is not a correct date");
         }
     }
-} // class MainController
+} // class RatesController
