@@ -16,9 +16,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    show-sql: true
   liquibase:
     change-log: classpath:/migration/changelog-master.xml
 
+currency:
+  base: EUR
 
 ecb:
   url: https://www.ecb.europa.eu

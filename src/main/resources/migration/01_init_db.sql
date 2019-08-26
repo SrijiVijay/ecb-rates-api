@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS rates (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   currency_id BIGINT NOT NULL,
   date_id BIGINT NOT NULL,
-  rate DECIMAL(20, 5) NOT NULL,
+  rate DECIMAL(20, 10) NOT NULL,
   CONSTRAINT fk_rates_currency FOREIGN KEY (currency_id) REFERENCES symbols (id) ON DELETE CASCADE,
   CONSTRAINT fk_rates_date FOREIGN KEY (date_id) REFERENCES dates (id) ON DELETE CASCADE
 );

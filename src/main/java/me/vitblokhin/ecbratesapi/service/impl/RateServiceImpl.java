@@ -4,8 +4,11 @@ import lombok.extern.log4j.Log4j2;
 import me.vitblokhin.ecbratesapi.client.response.DailyData;
 import me.vitblokhin.ecbratesapi.client.response.Envelope;
 import me.vitblokhin.ecbratesapi.client.response.RateData;
-import me.vitblokhin.ecbratesapi.dto.filter.QueryFilter;
+import me.vitblokhin.ecbratesapi.dto.filter.HistoricalFilter;
+import me.vitblokhin.ecbratesapi.dto.filter.SingleDateFilter;
 import me.vitblokhin.ecbratesapi.dto.json.DailyRateDto;
+import me.vitblokhin.ecbratesapi.dto.json.HistoricalRateDto;
+import me.vitblokhin.ecbratesapi.exception.InvalidParameterException;
 import me.vitblokhin.ecbratesapi.exception.ItemNotFoundException;
 import me.vitblokhin.ecbratesapi.model.Currency;
 import me.vitblokhin.ecbratesapi.model.ExchangeDate;
@@ -13,8 +16,10 @@ import me.vitblokhin.ecbratesapi.model.Rate;
 import me.vitblokhin.ecbratesapi.repository.CurrencyRepository;
 import me.vitblokhin.ecbratesapi.repository.ExchangeDateRepository;
 import me.vitblokhin.ecbratesapi.repository.RateRepository;
+import me.vitblokhin.ecbratesapi.repository.specs.RateSpecification;
 import me.vitblokhin.ecbratesapi.service.RateService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +31,8 @@ import java.util.*;
 @Log4j2
 @Service("rateService")
 public class RateServiceImpl implements RateService {
+    @Value("${currency.base}")
+    private String BASE_CURRENCY_CHAR;
 
     private final RateRepository rateRepository;
     private final CurrencyRepository currencyRepository;
@@ -41,66 +48,170 @@ public class RateServiceImpl implements RateService {
     }
 
     @Override
-    public DailyRateDto getDailyRate(QueryFilter filter, LocalDate date) {
-        DailyRateDto dailyRates = new DailyRateDto();
-
-        ExchangeDate exDate = exchangeDateRepository.findByDate(date)
-                .orElse(exchangeDateRepository.findFirstByDateBeforeOrderByDateDesc(date)
-                        .orElseThrow(() -> new ItemNotFoundException("Rates not found")));
-
-        dailyRates.setDate(exDate.getDate());
+    public DailyRateDto getDailyRate(SingleDateFilter filter) {
+        log.info(filter);
+        filter = prepareFilter(filter);
+        DailyRateDto result = new DailyRateDto();
 
         Map<String, BigDecimal> rateMap = new HashMap<>();
-        String base = filter.getBase();
-        List<String> symbols =
-                (Objects.isNull(filter.getSymbols()) ||
-                        filter.getSymbols().isEmpty()) ? null
-                        : filter.getSymbols();
+        final String base = filter.getBase();
+        List<String> charCodes = filter.getSymbols();
 
-        if (base == null || "EUR".equals(base) || "".equals(base)) {
-            dailyRates.setBase("EUR");
-            for (Rate rate : exDate.getRates()) {
-                String code = rate.getCurrency().getCharCode();
-                if(Objects.isNull(symbols) || symbols.contains(code)) {
-                    rateMap.put(code, rate.getRate());
-                }
-            }
-        } else {
-            Rate baseRate = exDate.getRates()
-                    .stream()
-                    .filter(r -> r.getCurrency()
-                            .getCharCode()
-                            .equals(base))
-                    .findFirst()
-                    .orElseThrow(() -> new ItemNotFoundException("Selected base not found"));
+        ExchangeDate exDate = exchangeDateRepository.findByDate(filter.getDate())
+                .orElse(exchangeDateRepository.findFirstByDateBeforeOrderByDateDesc(filter.getDate())
+                        .orElseThrow(() -> new ItemNotFoundException("Rates not found")));
+        List<Rate> rates = exDate.getRates();
 
-            dailyRates.setBase(baseRate.getCurrency().getCharCode());
+        result.setDate(exDate.getDate());
 
-            for (Rate rate : exDate.getRates()) {
-                String code = rate.getCurrency().getCharCode();
-                BigDecimal tmpRate = rate.getRate();
-                if(code.equals(base)){
-                    code = "EUR";
-                    tmpRate = BigDecimal.valueOf(1);
-                }
-                if(Objects.isNull(symbols) || symbols.contains(code)) {
-                    tmpRate = tmpRate.divide(baseRate.getRate(), rate.getRate().scale(), RoundingMode.HALF_UP);
-                    rateMap.put(code, tmpRate);
+        Rate baseRate = null;
+
+        for (Rate rate : rates) {
+            String charCode = rate.getCurrency().getCharCode();
+            if (charCodes == null || charCodes.contains(charCode)) {
+                BigDecimal rateValue = rate.getRate();
+
+                rateMap.put(charCode, rateValue);
+
+                if (charCode.equals(base)) {
+                    baseRate = rate;
                 }
             }
         }
 
-        dailyRates.setRates(rateMap);
-        return dailyRates;
+        if (baseRate != null) {
+            final Rate br = baseRate;
+            rateMap.replaceAll((c, r) ->
+                    Objects.equals(c, br.getCurrency().getCharCode()) ?
+                            BigDecimal.valueOf(1) :
+                            r.divide(br.getRate(), r.scale(), RoundingMode.HALF_UP)
+            );
+            if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
+                rateMap.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
+                        BigDecimal.valueOf(1)
+                                .divide(br.getRate(), br.getRate().scale(), RoundingMode.HALF_UP)
+                );
+            }
+
+        } else if (!BASE_CURRENCY_CHAR.equals(base)) {
+            throw new InvalidParameterException("Rates for selected base currency " + base + " and date " + filter.getDate() +" not found");
+        }
+
+        result.setBase(base);
+        result.setRates(rateMap);
+        return result;
+    }
+
+    @Override
+    public HistoricalRateDto getHistoricalRate(HistoricalFilter filter) {
+        log.info(filter);
+        filter = prepareFilter(filter);
+
+        HistoricalRateDto result = new HistoricalRateDto();
+
+        String base = filter.getBase();
+        List<String> charCodes = filter.getSymbols();
+
+        List<Rate> rates = rateRepository.findAll(RateSpecification.build(filter));
+
+        Map<LocalDate, Map<String, BigDecimal>> dateMap = new HashMap<>();
+        List<Rate> baseRates = new ArrayList<>();
+
+        for (Rate rate : rates) {
+            LocalDate date = rate.getDate().getDate();
+            String charCode = rate.getCurrency().getCharCode();
+            BigDecimal rateValue = rate.getRate();
+
+            Map<String, BigDecimal> rateMap = dateMap.getOrDefault(date, new HashMap<>());
+            rateMap.put(charCode, rateValue);
+            dateMap.putIfAbsent(date, rateMap);
+
+            if (charCode.equals(base)) {
+                baseRates.add(rate);
+            }
+        }
+
+        if (!baseRates.isEmpty()) {
+            for (Rate baseRate : baseRates) {
+                Map<String, BigDecimal> map =
+                        dateMap.get(baseRate.getDate().getDate());
+                map.replaceAll((c, r) ->
+                        Objects.equals(c, baseRate.getCurrency().getCharCode()) ?
+                                BigDecimal.valueOf(1) :
+                                r.divide(baseRate.getRate(), r.scale(), RoundingMode.HALF_UP)
+                );
+                if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
+                    map.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
+                            BigDecimal.valueOf(1)
+                                    .divide(baseRate.getRate(), baseRate.getRate().scale(), RoundingMode.HALF_UP)
+                    );
+                }
+            }
+
+        } else if (!BASE_CURRENCY_CHAR.equals(base)) {
+            throw new InvalidParameterException("Rates for selected base currency " + base
+                    + " and period " + filter.getStartDate()
+                    + "::" + filter.getEndDate() + " not found");
+        }
+
+        result.setBase(base);
+        result.setStartDate(filter.getStartDate());
+        result.setEndDate(filter.getEndDate());
+        result.setRates(dateMap);
+
+        return result;
+    }
+
+    private SingleDateFilter prepareFilter(SingleDateFilter filter) {
+        String base = filter.getBase();
+        List<String> charCodes = filter.getSymbols();
+        if (base == null || "".equals(base)) {
+            filter.setBase(BASE_CURRENCY_CHAR);
+        } else if (charCodes != null && !charCodes.isEmpty()) {
+            filter.getSymbols().add(base);
+        }
+
+        LocalDate date = filter.getDate();
+
+        if (date == null) {
+            filter.setDate(LocalDate.now());
+        }
+
+        return filter;
+    }
+
+    private HistoricalFilter prepareFilter(HistoricalFilter filter) {
+        String base = filter.getBase();
+        List<String> charCodes = filter.getSymbols();
+        if (base == null || "".equals(base)) {
+            filter.setBase(BASE_CURRENCY_CHAR);
+        } else if (charCodes != null && !charCodes.isEmpty()) {
+            filter.getSymbols().add(base);
+        }
+
+        LocalDate startDate = filter.getStartDate();
+        LocalDate endDate = filter.getEndDate();
+
+        if (startDate == null && endDate == null) {
+            throw new InvalidParameterException("At least one of the dates (startDate or endDate) must be specified");
+        } else if (endDate == null) {
+            filter.setEndDate(startDate.plusMonths(6));
+        } else if (startDate == null) {
+            filter.setStartDate(endDate.minusMonths(6));
+        }
+
+        return filter;
     }
 
     @Override
     public void updateRatesData(Envelope envelope) {
+        log.info("updating rates started");
         for (DailyData dailyData : envelope.getCube().getData()) {
             if (!exchangeDateRepository.findByDate(dailyData.getTime()).isPresent()) {
                 this.saveDailyRates(dailyData);
             }
         }
+        log.info("updating rates completed");
     }
 
     @Transactional
@@ -113,15 +224,12 @@ public class RateServiceImpl implements RateService {
             Rate rate = new Rate();
             Currency currency = this.prepareCurrency(code);
 
-            //if(!rateRepository.findByDate_DateAndCurrency_CharCode(date, code).isPresent()) {
+            rate.setRate(rateData.getRate());
+            rate.setCurrency(currency);
+            rate.setDate(exDate);
+            exDate.getRates().add(rate);
 
-                rate.setRate(rateData.getRate());
-                rate.setCurrency(currency);
-                rate.setDate(exDate);
-                exDate.getRates().add(rate);
-
-                initRates.add(rate);
-            //}
+            initRates.add(rate);
         }
         log.info("saving rates for date: {}", date);
         rateRepository.saveAll(initRates);

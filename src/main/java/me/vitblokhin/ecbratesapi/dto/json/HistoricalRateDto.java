@@ -10,7 +10,7 @@ import java.time.LocalDate;
 import java.util.Map;
 
 @Data
-public class TimeSeriesRateDto implements Serializable {
+public class HistoricalRateDto implements Serializable {
     private String base;
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;
@@ -18,4 +18,4 @@ public class TimeSeriesRateDto implements Serializable {
     private LocalDate endDate;
     @JsonProperty("rates")
     private Map<LocalDate, Map<String, BigDecimal>> rates;
-} // class HistoricRateDto
+} // class HistoricalRateDto

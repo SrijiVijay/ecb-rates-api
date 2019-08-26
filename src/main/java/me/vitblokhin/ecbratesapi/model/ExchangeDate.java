@@ -18,6 +18,6 @@ public class ExchangeDate extends AbstractEntity {
 
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
-    @OneToMany(mappedBy = "date", fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "date", fetch = FetchType.LAZY)
     private List<Rate> rates;
 } // class ExchangeDate
