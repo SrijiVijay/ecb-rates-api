@@ -4,11 +4,11 @@ import lombok.extern.log4j.Log4j2;
 import me.vitblokhin.ecbratesapi.client.response.DailyData;
 import me.vitblokhin.ecbratesapi.client.response.Envelope;
 import me.vitblokhin.ecbratesapi.client.response.RateData;
+import me.vitblokhin.ecbratesapi.dto.filter.BasicFilter;
 import me.vitblokhin.ecbratesapi.dto.filter.HistoricalFilter;
 import me.vitblokhin.ecbratesapi.dto.filter.SingleDateFilter;
 import me.vitblokhin.ecbratesapi.dto.json.DailyRateDto;
 import me.vitblokhin.ecbratesapi.dto.json.HistoricalRateDto;
-import me.vitblokhin.ecbratesapi.exception.InvalidParameterException;
 import me.vitblokhin.ecbratesapi.exception.ItemNotFoundException;
 import me.vitblokhin.ecbratesapi.model.Currency;
 import me.vitblokhin.ecbratesapi.model.ExchangeDate;
@@ -94,7 +94,7 @@ public class RateServiceImpl implements RateService {
             }
 
         } else if (!BASE_CURRENCY_CHAR.equals(base)) {
-            throw new InvalidParameterException("Rates for selected base currency " + base + " and date " + filter.getDate() +" not found");
+            throw new ItemNotFoundException("Rates for selected base currency " + base + " and date " + filter.getDate() +" not found");
         }
 
         result.setBase(base);
@@ -149,7 +149,7 @@ public class RateServiceImpl implements RateService {
             }
 
         } else if (!BASE_CURRENCY_CHAR.equals(base)) {
-            throw new InvalidParameterException("Rates for selected base currency " + base
+            throw new ItemNotFoundException("Rates for selected base currency " + base
                     + " and period " + filter.getStartDate()
                     + "::" + filter.getEndDate() + " not found");
         }
@@ -162,42 +162,13 @@ public class RateServiceImpl implements RateService {
         return result;
     }
 
-    private SingleDateFilter prepareFilter(SingleDateFilter filter) {
+    private <T extends BasicFilter> T prepareFilter(T filter) {
         String base = filter.getBase();
         List<String> charCodes = filter.getSymbols();
         if (base == null || "".equals(base)) {
             filter.setBase(BASE_CURRENCY_CHAR);
         } else if (charCodes != null && !charCodes.isEmpty()) {
             filter.getSymbols().add(base);
-        }
-
-        LocalDate date = filter.getDate();
-
-        if (date == null) {
-            filter.setDate(LocalDate.now());
-        }
-
-        return filter;
-    }
-
-    private HistoricalFilter prepareFilter(HistoricalFilter filter) {
-        String base = filter.getBase();
-        List<String> charCodes = filter.getSymbols();
-        if (base == null || "".equals(base)) {
-            filter.setBase(BASE_CURRENCY_CHAR);
-        } else if (charCodes != null && !charCodes.isEmpty()) {
-            filter.getSymbols().add(base);
-        }
-
-        LocalDate startDate = filter.getStartDate();
-        LocalDate endDate = filter.getEndDate();
-
-        if (startDate == null && endDate == null) {
-            throw new InvalidParameterException("At least one of the dates (startDate or endDate) must be specified");
-        } else if (endDate == null) {
-            filter.setEndDate(startDate.plusMonths(6));
-        } else if (startDate == null) {
-            filter.setStartDate(endDate.minusMonths(6));
         }
 
         return filter;
