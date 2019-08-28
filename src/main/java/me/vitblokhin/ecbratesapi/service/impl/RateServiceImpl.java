@@ -51,50 +51,51 @@ public class RateServiceImpl implements RateService {
     public DailyRateDto getDailyRate(SingleDateFilter filter) {
         log.info(filter);
         filter = prepareFilter(filter);
-        DailyRateDto result = new DailyRateDto();
-
-        Map<String, BigDecimal> rateMap = new HashMap<>();
         final String base = filter.getBase();
+        LocalDate date = filter.getDate();
         List<String> charCodes = filter.getSymbols();
+
+        DailyRateDto result = new DailyRateDto();
+        Map<String, BigDecimal> rateMap = new HashMap<>();
 
         ExchangeDate exDate = exchangeDateRepository.findByDate(filter.getDate())
                 .orElse(exchangeDateRepository.findFirstByDateBeforeOrderByDateDesc(filter.getDate())
                         .orElseThrow(() -> new ItemNotFoundException("Rates not found")));
         List<Rate> rates = exDate.getRates();
 
+        if (rates.isEmpty()) {
+            throw new ItemNotFoundException("Rates not found");
+        }
+
         result.setDate(exDate.getDate());
 
         Rate baseRate = null;
+        if (!BASE_CURRENCY_CHAR.equals(base)) {
+            baseRate = rates
+                    .stream().filter(r -> r.getCurrency().getCharCode().equals(base))
+                    .findFirst().orElseThrow(
+                            () -> new ItemNotFoundException("Rates for selected base currency " + base + " and date " + date + " not found"));
+        }
 
         for (Rate rate : rates) {
             String charCode = rate.getCurrency().getCharCode();
             if (charCodes == null || charCodes.contains(charCode)) {
                 BigDecimal rateValue = rate.getRate();
+                if (baseRate != null) {
+                    Rate br = baseRate;
+                    rateValue = rateValue
+                            .divide(br.getRate(), rate.getRate().scale(), RoundingMode.HALF_UP);
+
+                    if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
+                        rateMap.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
+                                BigDecimal.valueOf(1)
+                                        .divide(br.getRate(), br.getRate().scale(), RoundingMode.HALF_UP)
+                        );
+                    }
+                }
 
                 rateMap.put(charCode, rateValue);
-
-                if (charCode.equals(base)) {
-                    baseRate = rate;
-                }
             }
-        }
-
-        if (baseRate != null) {
-            final Rate br = baseRate;
-            rateMap.replaceAll((c, r) ->
-                    Objects.equals(c, br.getCurrency().getCharCode()) ?
-                            BigDecimal.valueOf(1) :
-                            r.divide(br.getRate(), r.scale(), RoundingMode.HALF_UP)
-            );
-            if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
-                rateMap.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
-                        BigDecimal.valueOf(1)
-                                .divide(br.getRate(), br.getRate().scale(), RoundingMode.HALF_UP)
-                );
-            }
-
-        } else if (!BASE_CURRENCY_CHAR.equals(base)) {
-            throw new ItemNotFoundException("Rates for selected base currency " + base + " and date " + filter.getDate() +" not found");
         }
 
         result.setBase(base);
@@ -114,8 +115,25 @@ public class RateServiceImpl implements RateService {
 
         List<Rate> rates = rateRepository.findAll(RateSpecification.build(filter));
 
+        if (rates.isEmpty()) {
+            throw new ItemNotFoundException("Rates not found");
+        }
+
         Map<LocalDate, Map<String, BigDecimal>> dateMap = new HashMap<>();
-        List<Rate> baseRates = new ArrayList<>();
+        Map<LocalDate, Rate> baseRates = new HashMap<>();
+
+        if (!BASE_CURRENCY_CHAR.equals(base)) {
+            for (Rate rate : rates) {
+                if (rate.getCurrency().getCharCode().equals(base)) {
+                    baseRates.put(rate.getDate().getDate(), rate);
+                }
+            }
+        }
+        if (!BASE_CURRENCY_CHAR.equals(base) && baseRates.isEmpty()) {
+            throw new ItemNotFoundException("Rates for selected base currency " + base
+                    + " and period " + filter.getStartDate()
+                    + "::" + filter.getEndDate() + " not found");
+        }
 
         for (Rate rate : rates) {
             LocalDate date = rate.getDate().getDate();
@@ -123,35 +141,27 @@ public class RateServiceImpl implements RateService {
             BigDecimal rateValue = rate.getRate();
 
             Map<String, BigDecimal> rateMap = dateMap.getOrDefault(date, new HashMap<>());
-            rateMap.put(charCode, rateValue);
-            dateMap.putIfAbsent(date, rateMap);
+            if (!baseRates.isEmpty()) {
+                Rate baseRate = baseRates.get(date);
+                if (baseRate != null) {
+                    rateValue = rateValue.divide(baseRate.getRate(), rateValue.scale(), RoundingMode.HALF_UP);
+                    rateMap.put(charCode, rateValue);
 
-            if (charCode.equals(base)) {
-                baseRates.add(rate);
-            }
-        }
-
-        if (!baseRates.isEmpty()) {
-            for (Rate baseRate : baseRates) {
-                Map<String, BigDecimal> map =
-                        dateMap.get(baseRate.getDate().getDate());
-                map.replaceAll((c, r) ->
-                        Objects.equals(c, baseRate.getCurrency().getCharCode()) ?
-                                BigDecimal.valueOf(1) :
-                                r.divide(baseRate.getRate(), r.scale(), RoundingMode.HALF_UP)
-                );
-                if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
-                    map.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
-                            BigDecimal.valueOf(1)
-                                    .divide(baseRate.getRate(), baseRate.getRate().scale(), RoundingMode.HALF_UP)
-                    );
+                    if (charCodes != null && charCodes.contains(BASE_CURRENCY_CHAR)) {
+                        rateMap.computeIfAbsent(BASE_CURRENCY_CHAR, (c) ->
+                                BigDecimal.valueOf(1)
+                                        .divide(baseRate.getRate(), baseRate.getRate().scale(), RoundingMode.HALF_UP)
+                        );
+                    }
                 }
+
+            } else {
+                rateMap.put(charCode, rateValue);
             }
 
-        } else if (!BASE_CURRENCY_CHAR.equals(base)) {
-            throw new ItemNotFoundException("Rates for selected base currency " + base
-                    + " and period " + filter.getStartDate()
-                    + "::" + filter.getEndDate() + " not found");
+            if (!rateMap.isEmpty()) {
+                dateMap.putIfAbsent(date, rateMap);
+            }
         }
 
         result.setBase(base);
