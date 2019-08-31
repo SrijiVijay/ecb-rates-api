@@ -6,7 +6,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -19,23 +18,20 @@ public class RateClientImplTest {
 
     @Mock
     private RestTemplate restTemplate;
-    @Mock
-    private RestTemplateBuilder builder;
 
     private RateClientImpl rateClient;
 
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        rateClient = new RateClientImpl(restTemplate);
     }
 
     @Test(expected = RateClientException.class)
     public void testFetchAllThrowsRateClientException() {
         String message = "Rest client error";
-        when(builder.build()).thenReturn(restTemplate);
         when(restTemplate.getForEntity(URI_ALL, Envelope.class)).thenThrow(new RestClientException(message));
-
-        rateClient = new RateClientImpl(builder);
 
         rateClient.fetchAll();
     }
@@ -43,10 +39,7 @@ public class RateClientImplTest {
     @Test(expected = RateClientException.class)
     public void testFetchLast90DaysRatesThrowsRateClientException() {
         String message = "Rest client error";
-        when(builder.build()).thenReturn(restTemplate);
         when(restTemplate.getForEntity(URI_LAST_90_DAYS, Envelope.class)).thenThrow(new RestClientException(message));
-
-        rateClient = new RateClientImpl(builder);
 
         rateClient.fetchLast90DaysRates();
     }
@@ -54,10 +47,7 @@ public class RateClientImplTest {
     @Test(expected = RateClientException.class)
     public void testFetchLatestThrowsRateClientException() {
         String message = "Rest client error";
-        when(builder.build()).thenReturn(restTemplate);
         when(restTemplate.getForEntity(URI_LATEST, Envelope.class)).thenThrow(new RestClientException(message));
-
-        rateClient = new RateClientImpl(builder);
 
         rateClient.fetchLatest();
     }

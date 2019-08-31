@@ -4,8 +4,8 @@ import lombok.extern.log4j.Log4j2;
 import me.vitblokhin.ecbratesapi.client.RateClient;
 import me.vitblokhin.ecbratesapi.client.response.Envelope;
 import me.vitblokhin.ecbratesapi.exception.RateClientException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -22,8 +22,9 @@ public class RateClientImpl implements RateClient {
 
     private final RestTemplate restTemplate;
 
-    public RateClientImpl(RestTemplateBuilder builder) {
-        this.restTemplate = builder.build();
+    @Autowired
+    public RateClientImpl(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
     @Override
