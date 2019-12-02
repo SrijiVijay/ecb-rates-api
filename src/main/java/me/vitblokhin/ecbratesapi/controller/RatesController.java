@@ -14,12 +14,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Log4j2
 @RestController
@@ -64,13 +68,19 @@ public class RatesController {
 
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ExceptionDto> handleBindException(HttpServletRequest req, BindException ex) {
-        StringBuilder sb = new StringBuilder("Invalid parameter(s): ");
-        ex.getBindingResult().getAllErrors()
-                .forEach(e -> sb.append(e.getDefaultMessage())
-                        .append("; ")
-                );
+        List<String> errors = new ArrayList<>();
+        for (FieldError error : ex.getBindingResult().getFieldErrors()) {
+            errors.add(error.getField() + ": " + error.getDefaultMessage());
+        }
+        for (ObjectError error : ex.getBindingResult().getGlobalErrors()) {
+            errors.add(error.getObjectName() + ": " + error.getDefaultMessage());
+        }
+
+        ExceptionDto exceptionDto =
+                new ExceptionDto("Invalid parameter(s)", errors);
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ExceptionDto(sb.toString()));
+                .body(exceptionDto);
     }
 } // class RatesController

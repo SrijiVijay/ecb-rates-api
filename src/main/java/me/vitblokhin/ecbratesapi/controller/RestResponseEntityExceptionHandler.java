@@ -19,7 +19,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ExceptionDto(ex.getMessage()));
+                .body(new ExceptionDto("Item not found", ex.getMessage()));
     }
 
     @ExceptionHandler({InvalidParameterException.class})
@@ -27,7 +27,7 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ExceptionDto(ex.getMessage()));
+                .body(new ExceptionDto("Invalid parameter(s)", ex.getMessage()));
     }
 
     @ExceptionHandler({Exception.class, ServerException.class})
@@ -35,6 +35,6 @@ public class RestResponseEntityExceptionHandler extends ResponseEntityExceptionH
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(new ExceptionDto(ex.getMessage()));
+                .body(new ExceptionDto("Internal server error", ex.getMessage()));
     }
 } // class RestResponseEntityExceptionHandler
