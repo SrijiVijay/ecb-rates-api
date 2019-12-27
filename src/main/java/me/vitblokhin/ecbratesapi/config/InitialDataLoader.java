@@ -47,7 +47,7 @@ public class InitialDataLoader implements ApplicationListener<ContextRefreshedEv
         if (!currencyRepository.findByCharCode(BASE_CURRENCY_CHAR).isPresent()) {
             Currency euro = new Currency();
             euro.setCharCode(BASE_CURRENCY_CHAR);
-            euro.setDecription(BASE_CURRENCY_CHAR + " currency");
+            euro.setDescription(BASE_CURRENCY_CHAR + " currency");
             currencyRepository.save(euro);
         }
 

@@ -15,6 +15,6 @@ public class CurrencyDto implements Serializable {
 
     public CurrencyDto(Currency entity) {
         this.charCode = entity.getCharCode();
-        this.description = entity.getDecription();
+        this.description = entity.getDescription();
     }
 } // class CurrencyDto
